@@ -14,7 +14,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # First name is required
+        # Asegúrate de que el campo first_name no esté vacío
         if not data.get('first_name'):
             raise serializers.ValidationError("El campo 'first_name' es obligatorio.")
         return data
@@ -29,6 +29,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'first_name', 'last_name', 'email', 'role']
 
 class CompanySerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Company
         fields = ['id', 'name', 'email', 'user']

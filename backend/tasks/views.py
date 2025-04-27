@@ -8,6 +8,8 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, UserSerializer, CompanySerializer, TaskSerializer
 from .models import Company, Task
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
@@ -62,17 +64,16 @@ class LogoutView(APIView):
 class CompanyCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         serializer = CompanySerializer(data=request.data)
         if serializer.is_valid():
-            company = serializer.save()
+            company = serializer.save(user=request.user)  # Asignar el usuario autenticado automáticamente
             return Response({
                 "message": "Compañía creada correctamente",
                 "company": {
                     "id": company.id,
                     "name": company.name,
                     "email": company.email,
-                    "user": company.user.id,
                 }
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -113,5 +114,20 @@ class TaskListView(APIView):
         tasks = Task.objects.all()
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = {
+            'id': self.user.id,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'email': self.user.email,
+            'role': self.user.role,
+        }
+        return data
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 

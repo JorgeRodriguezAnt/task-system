@@ -1,7 +1,7 @@
 import './App.css';
 import { Routes, Route, Navigate } from 'react-router';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
+import Task from './components/Task';
 import Protected from './components/Protected'; // Asegúrate de que el nombre coincida exactamente
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Protected element={Dashboard} />} />
+          <Route path="/dashboard" element={<Protected element={Task} />} />
         </Routes>
       </main>
     </div>

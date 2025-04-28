@@ -130,4 +130,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+class TaskStatusListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        statuses = Task.STATUS
+        return Response([{"value": status[0], "label": status[1]} for status in statuses])
+
 

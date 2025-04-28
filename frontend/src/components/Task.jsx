@@ -8,8 +8,8 @@ const Task = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
-
-  const statuses = ['Pending', 'In Progress', 'Completed', 'Archived'];
+  const [statuses, setStatuses] = useState([]);
+  const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -17,19 +17,40 @@ const Task = () => {
         const response = await axios.get('http://127.0.0.1:8000/tasks/api/tasks/list/', {
           headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
         });
-        const enhancedTasks = response.data.map(task => ({
-          ...task,
-          hours: task.hours || 0,
-          client: task.client || '',
-          deliveryDate: task.deliveryDate || '',
-          status: task.status || 'Pending',
-        }));
-        setTasks(enhancedTasks);
+        setTasks(response.data); // Ensure all tasks from the database are set
       } catch (error) {
         console.error('Error fetching tasks:', error);
       }
     };
     fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/tasks/api/tasks/statuses/');
+        setStatuses(response.data);
+      } catch (error) {
+        console.error('Error fetching statuses:', error);
+      }
+    };
+
+    fetchStatuses();
+  }, []);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/tasks/api/companies/list/', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+        });
+        setCompanies(response.data);
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+      }
+    };
+
+    fetchCompanies();
   }, []);
 
   const handleLogout = () => {
@@ -38,8 +59,18 @@ const Task = () => {
     navigate('/login');
   };
 
-  const handleChange = (id, field, value) => {
-    setTasks(tasks.map(task => (task.id === id ? { ...task, [field]: value } : task)));
+  const handleChange = async (id, field, value) => {
+    const updatedTasks = tasks.map(task => (task.id === id ? { ...task, [field]: value } : task));
+    setTasks(updatedTasks);
+
+    try {
+      const taskToUpdate = updatedTasks.find(task => task.id === id);
+      await axios.put(`http://127.0.0.1:8000/tasks/api/tasks/${id}/`, taskToUpdate, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
   };
 
   const deleteTask = async (id) => {
@@ -63,16 +94,23 @@ const Task = () => {
     }));
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     const newTask = {
-      id: Date.now(),
-      task: '',
-      hours: 0,
-      client: '',
-      deliveryDate: '',
-      status: 'Pending',
+      name: 'New Task',
+      description: 'Task description',
+      status: 'planning',
+      company: companies[0]?.id || null, // Assign the first company by default
+      user: localStorage.getItem('user_id'),
     };
-    setTasks([...tasks, newTask]);
+
+    try {
+      const response = await axios.post('http://127.0.0.1:8000/tasks/api/tasks/', newTask, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      setTasks([...tasks, response.data.task]);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
   };
 
   const handleAddCompany = async () => {
@@ -89,6 +127,22 @@ const Task = () => {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error adding company:', error);
+    }
+  };
+
+  const handleAccept = async (id) => {
+    try {
+      const taskToUpdate = tasks.find(task => task.id === id);
+      console.log('Updating task:', taskToUpdate); // Depuración: Verifica los datos enviados
+
+      await axios.put(`http://127.0.0.1:8000/tasks/api/tasks/${id}/`, taskToUpdate, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+
+      alert('Task updated successfully!');
+    } catch (error) {
+      console.error('Error updating task:', error.response || error); // Depuración: Muestra detalles del error
+      alert('Failed to update task. Check the console for more details.');
     }
   };
 
@@ -121,56 +175,59 @@ const Task = () => {
                 <td className="p-3">
                   <input
                     type="text"
-                    value={task.title}
-                    onChange={e => handleChange(task.id, 'title', e.target.value)}
-                    className="border rounded px-2 py-1 w-full"
+                    value={task.name}
+                    onChange={(e) => handleChange(task.id, 'name', e.target.value)}
+                    className="w-full px-2 py-1 border rounded"
                   />
-                </td>
-                <td className="p-3 flex items-center gap-2">
-                  <textarea
-                    value={task.description}
-                    onChange={e => handleChange(task.id, 'description', e.target.value)}
-                    className="border rounded px-2 py-1 w-full"
-                    rows="2"
-                    placeholder="Description"
-                  ></textarea>
-                 
                 </td>
                 <td className="p-3">
                   <input
                     type="text"
-                    value={task.client}
-                    onChange={e => handleChange(task.id, 'client', e.target.value)}
-                    className="border rounded px-2 py-1 w-full"
+                    value={task.description}
+                    onChange={(e) => handleChange(task.id, 'description', e.target.value)}
+                    className="w-full px-2 py-1 border rounded"
                   />
+                </td>
+                <td className="p-3">
+                  <select
+                    value={task.company}
+                    onChange={(e) => handleChange(task.id, 'company', e.target.value)}
+                    className="w-full px-2 py-1 border rounded"
+                  >
+                    {companies.map(company => (
+                      <option key={company.id} value={company.id}>
+                        {company.name}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="p-3">
                   <input
                     type="date"
-                    value={task.deliveryDate}
-                    onChange={e => handleChange(task.id, 'deliveryDate', e.target.value)}
-                    className="border rounded px-2 py-1 w-full"
+                    value={task.date}
+                    onChange={(e) => handleChange(task.id, 'date', e.target.value)}
+                    className="w-full px-2 py-1 border rounded"
                   />
                 </td>
                 <td className="p-3">
                   <select
                     value={task.status}
-                    onChange={e => handleChange(task.id, 'status', e.target.value)}
-                    className="border rounded px-2 py-1 w-full"
+                    onChange={(e) => handleChange(task.id, 'status', e.target.value)}
+                    className="w-full px-2 py-1 border rounded"
                   >
                     {statuses.map(status => (
-                      <option key={status} value={status}>
-                        {status}
+                      <option key={status.value} value={status.value}>
+                        {status.label}
                       </option>
                     ))}
                   </select>
                 </td>
                 <td className="p-3 flex gap-2">
                   <button
-                    onClick={() => toggleArchive(task.id)}
-                    className="px-3 py-1 text-white bg-blue-500 hover:bg-blue-600 rounded"
+                    onClick={() => handleAccept(task.id)}
+                    className="px-3 py-1 text-white bg-green-500 hover:bg-green-600 rounded"
                   >
-                    {task.status === 'Archived' ? 'Show' : 'Archive'}
+                    Accept
                   </button>
                   <button
                     onClick={() => deleteTask(task.id)}

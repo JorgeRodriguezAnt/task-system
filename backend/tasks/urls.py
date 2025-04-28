@@ -15,4 +15,5 @@ urlpatterns = [
    path('api/tasks/', views.TaskCreateView.as_view(), name='create_task'),  # Nueva vista para crear tarea
    path('api/companies/list/', views.CompanyListView.as_view(), name='list_companies'),  # Nueva vista para obtener todas las compañías
    path('api/tasks/list/', views.TaskListView.as_view(), name='list_tasks'),  # Nueva vista para obtener todas las tareas
+   path('api/tasks/statuses/', views.TaskStatusListView.as_view(), name='task_status_list'),  # Nueva vista para obtener todos los estados de las tareas
 ]
